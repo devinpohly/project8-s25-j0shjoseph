@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 import sys
 
@@ -16,26 +16,19 @@ regnames = {
         'SP': 'R31',
         }
 
+
 # convert a literal operand as it appears in the source file to
 # how it should appear in the intermediate representation.
 # If it's a number, then keep it as it is;
-# if it looks like a register, raise an exception;
-# if it looks like a label (most other things), prepend it with a #
+# otherwise, if it's a valid identifier, assume it's a label (including register names)
 def IMM(operand):
-    if operand.isdigit():
-        return operand
-    elif operand[0] == '-' and operand[1:].isdigit():
-        return operand
-    elif operand[0] == 'R' and operand[1:].isdigit():
-        num = int(operand[1:])
-        if num in range(32):
-            raise OperandException("Needs literal or label, found %s" % operand)
-        else:
-            return str(num)
-    elif operand.isalnum():
-        return "#" + operand
-    else:
-        raise OperandException("Needs literal or label, found %s" % operand)
+    try:
+        return str(int(operand))
+    except ValueError:
+        pass
+    if not operand.isidentifier():
+        raise OperandException("Needs literal or label, found '%s'" % operand)
+    return '#' + operand
 
 # convert a register operand as it appears in the source file
 # to how it should appear in the intermediate representation.
@@ -80,14 +73,14 @@ instructions = {
 
 # check to make sure there's a filename
 if len(sys.argv) < 2:
-    print "Usage: ./assembler filename.asm"
+    print("Usage: ./assembler filename.asm")
     sys.exit(1)
 
 # try to open the file
 try:
     asm_file = open(sys.argv[1])
 except IOError:
-    print "Can't find file %s (or some similar problem)" % sys.argv[1]
+    print("Can't find file %s (or some similar problem)" % sys.argv[1])
     sys.exit(1)
 
 
@@ -139,14 +132,17 @@ for line in lines:
         if lab_end == -1:
             break
         label = working_line[:lab_end]
-        if not label.isalnum():
-            print "Bad label %s in line %s" %(label, str(line_num))
-            print line
+        if label.isdigit():
+            # Probably an offset, ignore
+            pass
+        elif not label.isidentifier():
+            print("Bad label %s in line %s" %(label, str(line_num)))
+            print(line)
             error = True
         elif label in lab_def_byte:
             assert label in lab_def_line
-            print "Label %s previously defined on line %s" % (label, lab_def_line[label])
-            print line
+            print("Label %s previously defined on line %s" % (label, lab_def_line[label]))
+            print(line)
             error = True
         else:
             lab_def_byte[label] = byte_num
@@ -159,18 +155,18 @@ for line in lines:
         op_code = instr_pieces[0].upper()  # the mnemonic code for the instruction
         # is it a valid instruction?
         if op_code not in instructions:
-            print "Unknown instruction %s in line %s" %(instr_pieces[0], str(line_num))
-            print line
+            print("Unknown instruction %s in line %s" %(instr_pieces[0], str(line_num)))
+            print(line)
             error = True
 
         else :  # ok, it's a real instruction
             instr_format = instructions[op_code]
             # does it have the right number of operands?
             if len(instr_format) != len(instr_pieces):
-                print "Wrong number of operands to %s instruction in line %s" % (op_code, str(line_num))
-                print "Needs %s, found %s" % (str(len(instr_format) - 1),
-                        str(len(instr_pieces) - 1))
-                print line
+                print("Wrong number of operands to %s instruction in line %s" % (op_code, str(line_num)))
+                print("Needs %s, found %s" % (str(len(instr_format) - 1),
+                        str(len(instr_pieces) - 1)))
+                print(line)
                 error = True
             else: # ok, it has the right number of operands
                 # the "intermediate code" for this instruction
@@ -184,9 +180,9 @@ for line in lines:
                             lab_use_line[next_byte[1:]] = line_num
                         instr_byte_seq.append(instr_format[i](instr_pieces[i]))
                     except OperandException as e:
-                        print "Bad operand %s in line %s" % (str(i), str(line_num))
-                        print e.msg
-                        print line
+                        print("Bad operand %s in line %s" % (str(i), str(line_num)))
+                        print(e.msg)
+                        print(line)
                         error = True
                 # increment our byte count by the number of instructions
                 byte_num += len(instr_format)
@@ -199,7 +195,7 @@ for line in lines:
 # check to see that all defined labels are used somewhere
 for label in lab_def_line:
     if label not in lab_use_line:
-        print "Warning: label %s unused" % label
+        print("Warning: label %s unused" % label)
 
 # don't do a second pass if there was an error on the first
 if error:
@@ -223,8 +219,8 @@ for instr in instr_seq:
             lab = x[1:]
             # is it defined somewhere?
             if lab not in lab_def_byte and lab not in bad_labels:
-                print "Undefined label % used on line %" % (lab, lab_use_line[lab])
-                print lines[lab_use_line[lab]]
+                print("Undefined label %s used on line %d:" % (lab, lab_use_line[lab]))
+                print("   " + lines[lab_use_line[lab] - 1])
                 error = True
                 bad_labels.append(lab)
             else:
