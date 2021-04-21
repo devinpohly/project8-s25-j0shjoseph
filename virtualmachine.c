@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <ctype.h>
 
 #include "asm.h"
@@ -17,7 +18,8 @@
 #define MAXLINE 255
 
 struct machine {
-	char *program;
+	char **argv;
+	int argc;
 	int reg[REGS];
 	int mem[MEMSIZE];
 };
@@ -64,18 +66,21 @@ int in_mem(int addr)
 	return addr >= 0 && addr < MEMSIZE;
 }
 
-int reset_machine(struct machine *vm, char *filename)
+int reset_machine(struct machine *vm)
 {
-	int code_size = read_vmlfile(filename, vm->mem, MEMSIZE);
+	int code_size = read_vmlfile(vm->argv[0], vm->mem, MEMSIZE);
 	if (code_size < 0)
 		return 1;
 
 	// Add an invalid opcode to the code segment to separate from stack
 	vm->mem[code_size++] = -1;
 
-	vm->program = filename;
 	vm->reg[IP] = 0;
-	vm->reg[FP] = vm->reg[SP] = code_size;
+	vm->reg[SP] = code_size;
+	// Push arguments to main
+	for (int i = 1; i < vm->argc; i++)
+		vm->mem[vm->reg[SP]++] = atoi(vm->argv[i]);
+	vm->reg[FP] = vm->reg[SP];
 	return 0;
 }
 
@@ -368,11 +373,14 @@ int main(int argc, char **argv)
 	if (filearg >= argc) {
 		fprintf(stderr,
 			"Missing filename.\n"
-			"Usage: %s [-d] program.vml\n", argv[0]);
+			"Usage: %s [-d] program.vml [args...]\n", argv[0]);
 		return 1;
 	}
 
-	if (reset_machine(&vm, argv[filearg])) {
+	vm.argv = argv + filearg;
+	vm.argc = argc - filearg;
+
+	if (reset_machine(&vm)) {
 		return 1;
 	}
 
@@ -482,7 +490,7 @@ int main(int argc, char **argv)
 			print_stack(&vm, num);
 		} else if (is_prefix(cmd, "restart")) {
 			// Restart same program
-			if (reset_machine(&vm, vm.program)) {
+			if (reset_machine(&vm)) {
 				fprintf(stderr, "Machine reset failed, exiting\n");
 				return 1;
 			}
