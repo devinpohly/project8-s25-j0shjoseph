@@ -2,7 +2,7 @@
 
 BINS = disassembler virtualmachine
 OBJS = asm.o $(addsuffix .o,$(BINS))
-CFLAGS = -g -Wall -Wextra
+CFLAGS = -g -Wall -Wextra -std=gnu99
 LDFLAGS = -g
 
 all: $(BINS)
