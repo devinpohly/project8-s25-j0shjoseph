@@ -206,7 +206,9 @@ if error:
 
 # if the source file ends with .asm, then replace it with .vml, otherwise
 # just add .vml
-out_filename = filename.removesuffix('.asm') + '.vml'
+if filename.endswith('.asm'):
+    filename = filename[:-4]
+out_filename = filename + '.vml'
 
 # write the program
 with open(out_filename, 'w') as f:
