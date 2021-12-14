@@ -396,6 +396,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	// Save initial stack pointer for checking later
+	int init_sp = vm.reg[SP];
+
 	// Start paused if debugging
 	dbg.pause = dbg.enable;
 
@@ -441,6 +444,9 @@ int main(int argc, char **argv)
 					break;
 				case -1:
 					// Halt instruction
+					if (vm.verbose && init_sp != vm.reg[SP])
+						fprintf(stderr, "Final stack pointer does not match: %d -> %d\n",
+								init_sp, vm.reg[SP]);
 					if (!dbg.enable)
 						return 0;
 					fprintf(stderr, "[Program exited normally]\n");
