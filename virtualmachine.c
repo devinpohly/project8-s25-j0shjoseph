@@ -396,8 +396,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// Save initial stack pointer for checking later
+	// Save some initial register values for sanity-checking later
 	int init_sp = vm.reg[SP];
+	int init_fp = vm.reg[FP];
 
 	// Start paused if debugging
 	dbg.pause = dbg.enable;
@@ -444,9 +445,14 @@ int main(int argc, char **argv)
 					break;
 				case -1:
 					// Halt instruction
-					if (vm.verbose && init_sp != vm.reg[SP])
-						fprintf(stderr, "Final stack pointer does not match: %d -> %d\n",
-								init_sp, vm.reg[SP]);
+					if (vm.verbose) {
+						if (init_sp != vm.reg[SP])
+							fprintf(stderr, "Final stack pointer %d does not match initial (%d)\n",
+									vm.reg[SP], init_sp);
+						if (init_fp != vm.reg[FP])
+							fprintf(stderr, "Final frame pointer %d does not match initial (%d)\n",
+									vm.reg[FP], init_fp);
+					}
 					if (!dbg.enable)
 						return 0;
 					fprintf(stderr, "[Program exited normally]\n");
