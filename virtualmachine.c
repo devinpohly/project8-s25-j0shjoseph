@@ -3,6 +3,7 @@
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
+#include <getopt.h>
 
 #include "asm.h"
 
@@ -20,6 +21,7 @@
 struct machine {
 	char **argv;
 	int argc;
+	int verbose;
 	int reg[REGS];
 	int mem[MEMSIZE];
 };
@@ -357,28 +359,38 @@ void print_stack(struct machine *vm, int num)
 int main(int argc, char **argv)
 {
 	struct machine vm;
-	struct debugger dbg = {
-		.enable = 0,
-		.pause = 0,
-		.breakpoint = -1,
-	};
+	struct debugger dbg;
+
+	// Defaults
+	vm.verbose = 0;
+	dbg.enable = 0;
+	dbg.pause = 0;
+	dbg.breakpoint = -1;
 
 	// Parse command-line arguments
-	int filearg = 1;
-	if (argc > 1 && !strcmp(argv[1], "-d")) {
-		dbg.enable = 1;
-		filearg++;
+	int c;
+	while ((c = getopt(argc, argv, "dv")) >= 0) {
+		switch (c) {
+		case 'd':
+			dbg.enable = 1;
+			break;
+		case 'v':
+			vm.verbose = 1;
+			break;
+		case '?':
+			return 1;
+		}
 	}
 
-	if (filearg >= argc) {
+	if (optind >= argc) {
 		fprintf(stderr,
 			"Missing filename.\n"
 			"Usage: %s [-d] program.vml [args...]\n", argv[0]);
 		return 1;
 	}
 
-	vm.argv = argv + filearg;
-	vm.argc = argc - filearg;
+	vm.argv = argv + optind;
+	vm.argc = argc - optind;
 
 	if (reset_machine(&vm)) {
 		return 1;
